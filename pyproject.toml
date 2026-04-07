@@ -1,0 +1,10 @@
+[project]
+name = "lifecontingentrisk"
+version = "0.1.0"
+description = "lifecontingentrisk is a Python implementation of Actuarial Mathematics for Life Contigent Risk."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "chebpy>=0.2",
+    "plotnine>=0.15.3",
+]
