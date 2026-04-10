@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "chebpy>=0.2",
+    "ipykernel>=7.2.0",
     "plotnine>=0.15.3",
     "polars>=1.39.3",
 ]
