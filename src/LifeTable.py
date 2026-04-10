@@ -1,5 +1,6 @@
-from SurvivalModel import SurvivalModel
+from src.SurvivalModel import SurvivalModel
 import polars as pl
+from plotnine import *
 
 class LifeTable(SurvivalModel):
     def __init__(self, lx, x0 = 0, description = "Life Table"):
@@ -7,9 +8,24 @@ class LifeTable(SurvivalModel):
 
         # Create a dataframe with columns 'x', 'l_x', 'p_x', 'q_x', 'e_x'.
         df_curated = pl.DataFrame({
-            'x': x0 + pl.arange(0, len(lx)),
             'l_x': lx
-        })
+        }) \
+            .with_columns(
+                pl.int_range(x0, x0 + len(lx)).alias('x'),
+                pl.col('l_x').shift(-1, fill_value = 0).alias('l_x_next')
+            ) \
+            .with_columns(
+                (pl.col('l_x_next') / pl.col('l_x')).alias('p_x')
+            ) \
+            .with_columns(
+                (1 - pl.col('p_x')).alias('q_x')
+            ) \
+            .sort('x', descending = True) \
+            .with_columns(
+                pl.col('p_x').cum_sum().alias('e_x')
+            ) \
+            .sort('x') \
+            .select(['x', 'l_x', 'p_x', 'q_x', 'e_x'])
         
         self._df_curated = df_curated
 
@@ -31,15 +47,16 @@ class LifeTable(SurvivalModel):
 
     def plot(self):
         # Plot the mortality rate q(x) of the model.
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.df_curated['x'], self.df_curated['q_x'], label='Mortality Rate q(x)')
-        plt.xlabel('Age (x)')
-        plt.ylabel('Mortality Rate q(x)')
-        plt.title(f'Mortality Rate of {self.description}')
-        plt.legend()
-        plt.grid()
-        plt.show()
+        
+        plot = (ggplot(self.df_curated.to_pandas(), aes(x='x', y='q_x')) +
+            geom_line() +
+            scale_y_log10() +
+            labs(x='Age (x)', 
+                 y='Mortality Rate q(x)', 
+                 title=f'Mortality Rate of {self.description}') +
+            theme_minimal())
+        
+        plot.show()
 
     def q(self, x, t = 1, u = 0):
         # Return the probability that (x) survives u years and than dies in subsequent t years. 
@@ -59,15 +76,14 @@ class LifeTable(SurvivalModel):
         if t == 0:
             return 1
         
-        survival_prob = 1.0
-        for year in range(t):
-            current_age = x + year
-            if current_age >= self.w:
-                break
-            q_x = self.df_curated.loc[self.df_curated['x'] == current_age, 'q_x'].values[0]
-            survival_prob *= (1 - q_x)
-        
-        return survival_prob
+        # Using l_x to calculate the survival probability.
+        l_x = self.df_curated.filter(pl.col('x') == x).item(0, 'l_x')
+        l_x_plus_t = self.df_curated.filter(pl.col('x') == x + t).item(0, 'l_x')
+
+        return l_x_plus_t / l_x 
 
     def e(self, x):
         # Return the curated remaining lifetime of (x).
+        if x < self.x0 or x > self.w:
+            raise ValueError("Age x is out of bounds.")
+        return self.df_curated.filter(pl.col('x') == x).item(0, 'e_x')
