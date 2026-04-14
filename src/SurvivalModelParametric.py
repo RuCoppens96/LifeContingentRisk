@@ -1,5 +1,6 @@
 from src.SurvivalModel import SurvivalModel
 import polars as pl
+from chebpy import chebfun
 from plotnine import *
 
 class SurvivalModelParametric(SurvivalModel):
@@ -8,7 +9,32 @@ class SurvivalModelParametric(SurvivalModel):
         self._x0 = x0
         self._w = w
 
+        # Initialize the survival model based on the provided functions.
+        if S_0 is not None:
+            self._S_0 = chebfun(S_0, [x0, w])
+            self._F_0 = 1 - self._S_0
+            self._f_0 = self._F_0.diff()
+            self._mu = self._f_0 / self._S_0
+        elif F_0 is not None:
+            self._F_0 = chebfun(F_0, [x0, w])
+            self._S_0 = 1 - self._F_0
+            self._f_0 = self._F_0.diff()
+            self._mu = self._f_0 / self._S_0
+        elif mu is not None:
+            self._mu = chebfun(mu, [x0, w])
+            self._S_0 = (-self._mu).exp()
+            self._F_0 = 1 - self._S_0
+            self._f_0 = self._F_0.diff()
         
+        # Create a curated life table dataframe for ages from x0 to w.
+        df_curated = pl.DataFrame({
+            'x': range(x0, w + 1)
+        }) \
+            .with_columns(
+                pl.col('x').map_elements(self.p).alias('p_x'),
+                pl.col('x').map_elements(self.q).alias('q_x')
+            )
+        self._df_curated = df_curated
 
     @property
     def x0(self):
@@ -19,6 +45,26 @@ class SurvivalModelParametric(SurvivalModel):
     def w(self):
         """int: The maximum age covered by the survival model."""
         return self._w
+    
+    @property
+    def S_0(self):
+        """chebfun: The survival function S_0(x) for the survival model."""
+        return self._S_0
+
+    @property
+    def F_0(self):
+        """chebfun: The cumulative distribution function F_0(x) = 1 - S_0(x) for the survival model."""
+        return self._F_0
+    
+    @property
+    def f_0(self):
+        """chebfun: The probability density function f_0(x) for the survival model."""
+        return self._f_0
+    
+    @property
+    def mu(self):
+        """chebfun: The force of mortality function mu(x) for the survival model."""
+        return self._mu
 
     @property
     def description(self):
@@ -91,8 +137,8 @@ class SurvivalModelParametric(SurvivalModel):
         if t == 0:
             return 1
         
-        l_x = self.df_curated.filter(pl.col('x') == x).item(0, 'l_x')
-        l_x_plus_t = self.df_curated.filter(pl.col('x') == x + t).item(0, 'l_x')
+        l_x = self._S_0(x)
+        l_x_plus_t = self._S_0(x + t)
 
         return l_x_plus_t / l_x 
 
