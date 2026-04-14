@@ -74,16 +74,6 @@ wheels = [
 ]
 
 [[package]]
-name = "chebpy"
-version = "0.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "scipy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/dd/a4/b087e967806f0a9e511745b162efcd281bf0c102c725396eb4b84db61ff2/chebpy-0.2.tar.gz", hash = "sha256:62161d5243a3f2e8cf5024d849c6152fde132c73dfa41bbe9084a62f8aab9ce2", size = 13572, upload-time = "2012-08-21T07:16:44.767Z" }
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -403,8 +393,8 @@ name = "lifecontingentrisk"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "chebpy" },
     { name = "ipykernel" },
+    { name = "numpy" },
     { name = "plotnine" },
     { name = "polars" },
     { name = "pyarrow" },
@@ -412,8 +402,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "chebpy", specifier = ">=0.2" },
     { name = "ipykernel", specifier = ">=7.2.0" },
+    { name = "numpy", specifier = ">=2.4.4" },
     { name = "plotnine", specifier = ">=0.15.3" },
     { name = "polars", specifier = ">=1.39.3" },
     { name = "pyarrow", specifier = ">=23.0.1" },
